@@ -1,0 +1,386 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Design System Custom Properties ─── */
+:root {
+  --bg-primary: #F8FAFC;
+  --bg-surface: rgba(255, 255, 255, 0.70);
+  --bg-surface-hover: rgba(255, 255, 255, 0.85);
+  --border-color: rgba(148, 163, 184, 0.3);
+  --text-primary: #0F172A;
+  --text-secondary: #475569;
+  --accent: #6366F1;
+  --accent-hover: #4F46E5;
+  --success: #22C55E;
+  --destructive: #EF4444;
+  --muted: #F1F5F9;
+
+  /* Gradient mesh blobs */
+  --blob-1: #818CF8;
+  --blob-2: #C084FC;
+  --blob-3: #67E8F9;
+  --blob-4: #F0ABFC;
+}
+
+.dark {
+  --bg-primary: #0d0d0d;
+  --bg-surface: rgba(26, 26, 26, 0.70);
+  --bg-surface-hover: rgba(42, 42, 42, 0.85);
+  --border-color: rgba(255, 255, 255, 0.12);
+  --text-primary: #F8FAFC;
+  --text-secondary: #94A3B8;
+  --accent: #818CF8;
+  --accent-hover: #6366F1;
+  --success: #4ADE80;
+  --destructive: #F87171;
+  --muted: #1E293B;
+
+  --blob-1: #4338CA;
+  --blob-2: #7C3AED;
+  --blob-3: #0E7490;
+  --blob-4: #A21CAF;
+}
+
+/* ─── Base Styles ─── */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100dvh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* ─── Animated Gradient Background ─── */
+.gradient-mesh {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.gradient-mesh::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background:
+    radial-gradient(circle at 20% 30%, var(--blob-1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, var(--blob-2) 0%, transparent 50%),
+    radial-gradient(circle at 50% 80%, var(--blob-3) 0%, transparent 50%),
+    radial-gradient(circle at 70% 60%, var(--blob-4) 0%, transparent 40%);
+  opacity: 0.15;
+  animation: gradientMeshMove 20s ease-in-out infinite alternate;
+}
+
+.dark .gradient-mesh::before {
+  opacity: 0.08;
+}
+
+@keyframes gradientMeshMove {
+  0% {
+    transform: translate(0%, 0%) rotate(0deg);
+  }
+  33% {
+    transform: translate(5%, -3%) rotate(3deg);
+  }
+  66% {
+    transform: translate(-3%, 5%) rotate(-2deg);
+  }
+  100% {
+    transform: translate(2%, -2%) rotate(1deg);
+  }
+}
+
+/* ─── Glass Panel Utility ─── */
+@layer components {
+  .glass-panel {
+    background: var(--bg-surface);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+    transition: all 0.2s ease;
+  }
+
+  .dark .glass-panel {
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  }
+
+  .glass-panel-sm {
+    background: var(--bg-surface);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+    transition: all 0.2s ease;
+  }
+
+  .glass-button {
+    background: var(--bg-surface);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.15s ease-out;
+    color: var(--text-primary);
+    font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  }
+
+  .glass-button:hover {
+    background: var(--bg-surface-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  }
+
+  .glass-button:active {
+    transform: translateY(0px) scale(0.98);
+  }
+
+  .accent-button {
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.15s ease-out;
+    font-family: 'IBM Plex Sans', system-ui, sans-serif;
+    font-weight: 600;
+    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+  }
+
+  .accent-button:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 8px 25px rgba(99, 102, 241, 0.4);
+  }
+
+  .accent-button:active {
+    transform: translateY(0px) scale(0.98);
+  }
+
+  .accent-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+}
+
+/* ─── Border Beam (running-state glow) ─── */
+@property --beam-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes borderBeamSpin {
+  to {
+    --beam-angle: 360deg;
+  }
+}
+
+/* ─── Shimmer Button ─── */
+@keyframes shimmerSweep {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@layer components {
+  .border-beam {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    z-index: 5;
+    background: conic-gradient(
+      from var(--beam-angle),
+      transparent 0deg,
+      transparent 300deg,
+      var(--beam-color) 340deg,
+      transparent 360deg
+    );
+    -webkit-mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+    animation: borderBeamSpin var(--beam-duration, 4s) linear infinite;
+  }
+
+  .shimmer-button {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    cursor: pointer;
+    font-family: 'IBM Plex Sans', system-ui, sans-serif;
+    font-weight: 600;
+    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+    transition: all 0.15s ease-out;
+  }
+
+  .shimmer-button:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 8px 25px rgba(99, 102, 241, 0.4);
+  }
+
+  .shimmer-button:active {
+    transform: translateY(0px) scale(0.98);
+  }
+
+  .shimmer-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+
+  .shimmer-button__shine {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(
+      110deg,
+      transparent 30%,
+      rgba(255, 255, 255, 0.45) 50%,
+      transparent 70%
+    );
+    background-size: 200% 100%;
+    animation: shimmerSweep 3s ease-in-out infinite;
+  }
+
+  .shimmer-button__label {
+    position: relative;
+    z-index: 1;
+  }
+
+  .spotlight-card {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .spotlight-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+    background: radial-gradient(
+      180px circle at var(--spot-x, 50%) var(--spot-y, 50%),
+      var(--spot-color, rgba(99, 102, 241, 0.25)),
+      transparent 65%
+    );
+  }
+
+  .spotlight-card:hover::before {
+    opacity: 1;
+  }
+
+  .spotlight-card > * {
+    position: relative;
+    z-index: 1;
+  }
+}
+
+/* ─── Yjs Cursor Styles ─── */
+/* Layout only — per-client color and name are injected at runtime from
+   awareness state (see Editor.tsx), since y-monaco supplies neither. */
+.yRemoteSelection {
+  border-radius: 2px;
+}
+
+.yRemoteSelectionHead {
+  position: absolute;
+  box-sizing: border-box;
+  border-left: 2px solid;
+  height: 100%;
+}
+
+.yRemoteSelectionHead::after {
+  position: absolute;
+  top: -1.4em;
+  left: -2px;
+  font-size: 11px;
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 4px 4px 4px 0;
+  white-space: nowrap;
+  color: white;
+  line-height: 1.4;
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* ─── Scrollbar Styling ─── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
+/* ─── Focus States ─── */
+*:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ─── Reduced Motion ─── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ─── Selection ─── */
+::selection {
+  background-color: rgba(99, 102, 241, 0.3);
+  color: var(--text-primary);
+}
