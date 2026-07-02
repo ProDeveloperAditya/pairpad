@@ -39,15 +39,18 @@ export function Room() {
     setUserColor(newConnection.userInfo.color);
 
     let graceTimer: ReturnType<typeof setTimeout> | undefined;
+    let hasConnectedOnce = false;
 
     const handleStatus = ({ status }: { status: string }) => {
       const connected = status === 'connected';
       setIsConnected(connected);
       clearTimeout(graceTimer);
       if (connected) {
+        hasConnectedOnce = true;
         setShowReconnecting(false);
-      } else {
-        // Wait 3s before showing the banner — y-websocket auto-reconnects fast.
+      } else if (hasConnectedOnce) {
+        // Only warn about a *lost* connection — never a slow initial connect.
+        // Wait 3s before showing the banner (y-websocket auto-reconnects fast).
         graceTimer = setTimeout(() => setShowReconnecting(true), 3000);
       }
     };
