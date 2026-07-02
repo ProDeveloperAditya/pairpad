@@ -27,6 +27,8 @@ export function Room() {
   const [connection, setConnection] = useState<YjsConnection | null>(null);
   const [userName, setUserName] = useState('');
   const [userColor, setUserColor] = useState('#6366F1');
+  // Only warn after a short grace period so brief blips don't flash a banner.
+  const [showReconnecting, setShowReconnecting] = useState(false);
 
   useEffect(() => {
     if (!roomId) return;
@@ -36,16 +38,28 @@ export function Room() {
     setUserName(newConnection.userInfo.name);
     setUserColor(newConnection.userInfo.color);
 
+    let graceTimer: ReturnType<typeof setTimeout> | undefined;
+
     const handleStatus = ({ status }: { status: string }) => {
-      setIsConnected(status === 'connected');
+      const connected = status === 'connected';
+      setIsConnected(connected);
+      clearTimeout(graceTimer);
+      if (connected) {
+        setShowReconnecting(false);
+      } else {
+        // Wait 3s before showing the banner — y-websocket auto-reconnects fast.
+        graceTimer = setTimeout(() => setShowReconnecting(true), 3000);
+      }
     };
 
     newConnection.provider.on('status', handleStatus);
 
     return () => {
+      clearTimeout(graceTimer);
       newConnection.provider.off('status', handleStatus);
       newConnection.destroy();
       setConnection(null);
+      setShowReconnecting(false);
     };
   }, [roomId]);
 
@@ -198,6 +212,14 @@ export function Room() {
         userColor={userColor}
         onNameChange={handleNameChange}
       />
+
+      {/* Reconnecting banner */}
+      {showReconnecting && (
+        <div className="mx-2 mt-2 flex items-center justify-center gap-2 rounded-lg bg-amber-500/15 px-3 py-1.5 text-xs font-medium text-amber-600 dark:text-amber-400 ring-1 ring-amber-500/30 animate-fade-in">
+          <span className="inline-block h-2 w-2 rounded-full bg-amber-500 animate-pulse-soft" />
+          Connection lost — reconnecting…
+        </div>
+      )}
 
       {/* Editor + Output */}
       <div className="flex-1 grid grid-cols-1 md:grid-cols-[3fr_2fr] gap-2 p-2 min-h-0">
