@@ -14,7 +14,10 @@ export const LANGUAGES: LanguageOption[] = [
   { id: 'c', label: 'C', monaco: 'c' },
   { id: 'java', label: 'Java', monaco: 'java' },
   { id: 'ruby', label: 'Ruby', monaco: 'ruby' },
-  { id: 'go', label: 'Go', monaco: 'go' },
+  // Go is supported by the backend but hidden here: `go run` needs more than
+  // the 10s window on the current 1 GB host. Re-add when the backend moves to
+  // a larger VM.
+  // { id: 'go', label: 'Go', monaco: 'go' },
 ];
 
 export function getMonacoLanguage(language: Language): string {
