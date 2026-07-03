@@ -322,13 +322,6 @@ export function Room() {
         placeholder="Run, switch language, copy URL..."
       />
 
-      {/* Command Palette hint */}
-      <div className="absolute bottom-3 right-3 text-xs text-[var(--text-secondary)] opacity-50 hidden md:flex items-center gap-1.5">
-        <kbd className="px-1.5 py-0.5 rounded border border-[var(--border-color)] bg-[var(--muted)] font-mono text-[10px]">
-          ⌘ J
-        </kbd>
-        <span>Command palette</span>
-      </div>
     </div>
   );
 }
