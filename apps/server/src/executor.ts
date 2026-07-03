@@ -43,8 +43,13 @@ const LANGUAGES: Record<Language, LanguageConfig> = {
   javascript: { image: 'node:20-alpine', filename: 'main.js', command: 'node main.js' },
   ruby: { image: 'ruby:3.3-alpine', filename: 'main.rb', command: 'ruby main.rb' },
   go: { image: 'golang:1.22-alpine', filename: 'main.go', command: 'go run main.go', memoryMb: 256 },
-  c: { image: 'gcc:13', filename: 'main.c', command: 'gcc -O2 -o app main.c && ./app' },
-  cpp: { image: 'gcc:13', filename: 'main.cpp', command: 'g++ -O2 -std=c++17 -o app main.cpp && ./app' },
+  c: { image: 'gcc:13', filename: 'main.c', command: 'gcc -O2 -o app main.c && ./app', memoryMb: 256 },
+  cpp: {
+    image: 'gcc:13',
+    filename: 'main.cpp',
+    command: 'g++ -O2 -std=c++17 -o app main.cpp && ./app',
+    memoryMb: 256,
+  },
   java: {
     image: 'eclipse-temurin:21-jdk-alpine',
     filename: 'Main.java',
