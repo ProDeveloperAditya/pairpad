@@ -81,6 +81,11 @@ export interface YjsConnection {
   ydoc: Y.Doc;
   provider: WebsocketProvider;
   yText: Y.Text;
+  /**
+   * Shared execution state. Whoever hits Run writes `{status, by, …}` here so
+   * every client in the room sees who is running and the same output.
+   */
+  yExecution: Y.Map<unknown>;
   userInfo: UserInfo;
   /** Update the local user's display name; broadcasts to peers and persists. */
   updateName: (name: string) => void;
@@ -93,6 +98,7 @@ export function createYjsConnection(roomId: string): YjsConnection {
   const ydoc = new Y.Doc();
   const provider = new WebsocketProvider(wsUrl, roomId, ydoc);
   const yText = ydoc.getText('monaco');
+  const yExecution = ydoc.getMap('execution');
   const userInfo = loadOrCreateUserInfo();
 
   provider.awareness.setLocalStateField('user', {
@@ -124,5 +130,5 @@ export function createYjsConnection(roomId: string): YjsConnection {
     ydoc.destroy();
   };
 
-  return { ydoc, provider, yText, userInfo, updateName, destroy };
+  return { ydoc, provider, yText, yExecution, userInfo, updateName, destroy };
 }

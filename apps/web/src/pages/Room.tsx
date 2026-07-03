@@ -13,6 +13,24 @@ import { BorderBeam } from '../components/ui/BorderBeam';
 import { LANGUAGES, type Language } from '../lib/languages';
 import { useTheme } from '../lib/theme';
 
+/** Execution state shared through the Yjs doc — one run, visible to everyone. */
+interface SharedRunState {
+  status: 'running' | 'done' | 'error';
+  by: string;
+  color: string;
+  language: Language;
+  startedAt: number;
+  result?: ExecutionResult;
+  error?: string;
+}
+
+/** Keep giant outputs from bloating the shared doc. */
+function clipOutput(text: string): string {
+  return text.length > 100_000
+    ? `${text.slice(0, 100_000)}\n…[output truncated]`
+    : text;
+}
+
 export function Room() {
   const { id: roomId } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -27,6 +45,7 @@ export function Room() {
   const [connection, setConnection] = useState<YjsConnection | null>(null);
   const [userName, setUserName] = useState('');
   const [userColor, setUserColor] = useState('#6366F1');
+  const [runBy, setRunBy] = useState<{ name: string; color: string } | null>(null);
   // Only warn after a short grace period so brief blips don't flash a banner.
   const [showReconnecting, setShowReconnecting] = useState(false);
 
@@ -74,6 +93,37 @@ export function Room() {
     [connection]
   );
 
+  // Execution state lives in the shared doc: whoever runs writes it, everyone
+  // (including the runner) renders from the observer below. New joiners see
+  // the room's last result too.
+  useEffect(() => {
+    if (!connection) return;
+    const yExecution = connection.yExecution;
+
+    const applySharedState = () => {
+      const state = yExecution.get('state') as SharedRunState | undefined;
+      if (!state) return;
+      setRunBy({ name: state.by, color: state.color });
+      if (state.status === 'running') {
+        setIsRunning(true);
+        setResult(null);
+        setError(null);
+      } else if (state.status === 'done') {
+        setIsRunning(false);
+        setResult(state.result ?? null);
+        setError(null);
+      } else {
+        setIsRunning(false);
+        setResult(null);
+        setError(state.error ?? 'Execution failed');
+      }
+    };
+
+    applySharedState();
+    yExecution.observe(applySharedState);
+    return () => yExecution.unobserve(applySharedState);
+  }, [connection]);
+
   const handleRun = useCallback(async () => {
     if (!connection || isRunning) return;
 
@@ -83,9 +133,17 @@ export function Room() {
       return;
     }
 
-    setIsRunning(true);
-    setResult(null);
-    setError(null);
+    const yExecution = connection.yExecution;
+    const by = connection.userInfo.name;
+    const color = connection.userInfo.color;
+
+    yExecution.set('state', {
+      status: 'running',
+      by,
+      color,
+      language,
+      startedAt: Date.now(),
+    } satisfies SharedRunState);
 
     try {
       const apiUrl = import.meta.env['VITE_API_URL'] as string | undefined ?? 'http://localhost:4000';
@@ -100,12 +158,28 @@ export function Room() {
       }
 
       const data = (await response.json()) as ExecutionResult;
-      setResult(data);
+      yExecution.set('state', {
+        status: 'done',
+        by,
+        color,
+        language,
+        startedAt: Date.now(),
+        result: {
+          ...data,
+          stdout: clipOutput(data.stdout),
+          stderr: clipOutput(data.stderr),
+        },
+      } satisfies SharedRunState);
     } catch (fetchError) {
       const message = fetchError instanceof Error ? fetchError.message : 'Execution failed';
-      setError(message);
-    } finally {
-      setIsRunning(false);
+      yExecution.set('state', {
+        status: 'error',
+        by,
+        color,
+        language,
+        startedAt: Date.now(),
+        error: message,
+      } satisfies SharedRunState);
     }
   }, [connection, language, isRunning]);
 
@@ -235,7 +309,7 @@ export function Room() {
         {/* Output Panel */}
         <div className="glass-panel overflow-hidden min-h-0 relative">
           {isRunning && <BorderBeam duration={3} />}
-          <Output result={result} isRunning={isRunning} error={error} />
+          <Output result={result} isRunning={isRunning} error={error} runBy={runBy} />
         </div>
       </div>
 

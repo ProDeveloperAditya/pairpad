@@ -13,14 +13,25 @@ interface OutputProps {
   result: ExecutionResult | null;
   isRunning: boolean;
   error: string | null;
+  /** Who triggered the current/last run — shared across all clients. */
+  runBy?: { name: string; color: string } | null;
 }
 
-export function Output({ result, isRunning, error }: OutputProps) {
+export function Output({ result, isRunning, error, runBy }: OutputProps) {
   if (isRunning) {
     return (
       <div className="h-full flex flex-col items-center justify-center gap-3 text-[var(--text-secondary)]">
         <Loader2 className="w-6 h-6 animate-spin text-accent dark:text-accent-light" />
-        <span className="text-sm font-medium">Executing...</span>
+        <span className="text-sm font-medium">
+          {runBy ? (
+            <>
+              <span style={{ color: runBy.color }}>{runBy.name}</span> is running the
+              code…
+            </>
+          ) : (
+            'Executing...'
+          )}
+        </span>
       </div>
     );
   }
@@ -89,19 +100,29 @@ export function Output({ result, isRunning, error }: OutputProps) {
         )}
       </div>
 
-      {/* Footer with exit code and timing */}
-      <div className="border-t border-[var(--border-color)] px-4 py-2 flex items-center justify-between text-xs font-sans text-[var(--text-secondary)]">
-        <div className="flex items-center gap-2">
+      {/* Footer with runner, exit code, and timing */}
+      <div className="border-t border-[var(--border-color)] px-4 py-2 flex items-center justify-between gap-2 text-xs font-sans text-[var(--text-secondary)]">
+        <div className="flex items-center gap-2 min-w-0">
           <span
-            className={`inline-block w-2 h-2 rounded-full ${
+            className={`inline-block w-2 h-2 rounded-full shrink-0 ${
               result.exitCode === 0
                 ? 'bg-success dark:bg-success-light'
                 : 'bg-destructive dark:bg-destructive-light'
             }`}
           />
-          <span>exit: {result.exitCode}</span>
+          <span className="shrink-0">exit: {result.exitCode}</span>
+          {runBy && (
+            <span className="flex items-center gap-1.5 min-w-0">
+              <span className="shrink-0 opacity-50">·</span>
+              <span
+                className="inline-block w-2 h-2 rounded-full shrink-0"
+                style={{ backgroundColor: runBy.color }}
+              />
+              <span className="truncate">run by {runBy.name}</span>
+            </span>
+          )}
         </div>
-        <span className="inline-flex items-center tabular-nums">
+        <span className="inline-flex items-center tabular-nums shrink-0">
           <SlidingNumber value={result.durationMs} />
           ms
         </span>

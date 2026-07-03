@@ -58,7 +58,7 @@ export function Toolbar({
   }
 
   return (
-    <div className="glass-panel-sm mx-2 mt-2 px-3 py-2 flex items-center gap-2 sm:gap-3 rounded-xl">
+    <div className="glass-panel-sm mx-2 mt-2 px-3 py-2 flex flex-wrap items-center gap-2 sm:gap-3 rounded-xl">
       {/* Logo */}
       <button
         onClick={() => navigate('/')}
@@ -106,8 +106,8 @@ export function Toolbar({
       {/* Spacer */}
       <div className="flex-1" />
 
-      {/* Your editable name */}
-      <div className="hidden sm:flex">
+      {/* Your editable name (all screen sizes — tap to rename) */}
+      <div className="flex">
         <NameEditor name={userName} color={userColor} onChange={onNameChange} />
       </div>
 

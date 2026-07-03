@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import MonacoEditor from '@monaco-editor/react';
+import type { Monaco } from '@monaco-editor/react';
 import { MonacoBinding } from 'y-monaco';
 import type { editor } from 'monaco-editor';
 import type { YjsConnection } from '../lib/yjsClient';
@@ -14,18 +15,38 @@ interface EditorProps {
 export function Editor({ language, connection }: EditorProps) {
   const { theme } = useTheme();
   const [editorInstance, setEditorInstance] = useState<editor.IStandaloneCodeEditor | null>(null);
+  const [monacoApi, setMonacoApi] = useState<Monaco | null>(null);
   const bindingRef = useRef<MonacoBinding | null>(null);
 
-  function handleEditorDidMount(mountedEditor: editor.IStandaloneCodeEditor) {
+  function handleEditorDidMount(
+    mountedEditor: editor.IStandaloneCodeEditor,
+    monaco: Monaco
+  ) {
     setEditorInstance(mountedEditor);
+    setMonacoApi(monaco);
   }
 
   // Create or recreate binding when both editor and connection are available
   useEffect(() => {
-    if (!editorInstance || !connection) return;
+    if (!editorInstance || !monacoApi || !connection) return;
 
     const model = editorInstance.getModel();
     if (!model) return;
+
+    // ── EOL discipline: keep every client on LF ──────────────────────────
+    // Monaco silently normalizes line endings per-model. If a CRLF ("\r\n")
+    // ever enters the shared Y.Text (Windows paste, IME), character offsets
+    // diverge between clients and the *rendered* text scrambles even though
+    // the CRDT stays correct. Pin the model to LF and scrub any legacy "\r"
+    // from the shared text before binding.
+    const rawText = connection.yText.toString();
+    if (rawText.includes('\r')) {
+      connection.ydoc.transact(() => {
+        connection.yText.delete(0, rawText.length);
+        connection.yText.insert(0, rawText.replace(/\r\n?/g, '\n'));
+      });
+    }
+    model.setEOL(monacoApi.editor.EndOfLineSequence.LF);
 
     // Destroy previous binding if any
     bindingRef.current?.destroy();
@@ -41,7 +62,7 @@ export function Editor({ language, connection }: EditorProps) {
       bindingRef.current?.destroy();
       bindingRef.current = null;
     };
-  }, [editorInstance, connection]);
+  }, [editorInstance, monacoApi, connection]);
 
   // y-monaco only tags each remote caret/selection with a per-client CSS class;
   // it does not apply colors or names. We inject a stylesheet derived from
