@@ -1,23 +1,57 @@
-# PairPad
+<div align="center">
 
-**Real-time collaborative code execution environment.** Share a URL, type code together in a Monaco editor with live multi-cursor presence, then hit **Run** to execute it in an isolated Docker container and see the output. No login — generate a room, share the link, code.
+# ⚡ PairPad
 
-Two people on two laptops can edit the same file simultaneously; their edits merge without conflict, and either can run the code in a sandbox.
+### Google Docs for code — with a Run button.
+
+Share a link. Code together in real time. Execute it in a locked-down Docker sandbox.
+No login, no setup, no database.
+
+<br/>
+
+**[🚀 Try it live → pairpad-web.vercel.app](https://pairpad-web.vercel.app)**
+
+<br/>
+
+![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white&labelColor=20232a)
+![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white&labelColor=20232a)
+![Node.js](https://img.shields.io/badge/Node.js-20-339933?logo=nodedotjs&logoColor=white&labelColor=20232a)
+![Yjs](https://img.shields.io/badge/CRDT-Yjs-6B57FF?labelColor=20232a)
+![Docker](https://img.shields.io/badge/Sandbox-Docker-2496ED?logo=docker&logoColor=white&labelColor=20232a)
+![Cost](https://img.shields.io/badge/hosting-%240%2Fmonth-success?labelColor=20232a)
+
+</div>
 
 ---
 
-## Features
+## 🎬 See it in 30 seconds
 
-- **Real-time collaborative editing** via [Yjs](https://yjs.dev) CRDTs — concurrent edits never conflict, even on poor networks
-- **Live presence** — every user gets a color + name (editable), shown as a labeled cursor in the editor and a presence bar
-- **Sandboxed code execution** in Docker with strict resource limits
-- **Multiple languages** — Python, JavaScript (Node), C, C++, Java, Ruby, Go
-- **No database** — rooms live in memory and expire after 2 hours idle
-- **Glassmorphism UI** with light/dark themes, command palette (⌘J), and animated states
+1. Open **[pairpad-web.vercel.app](https://pairpad-web.vercel.app)** and click **New Room**
+2. Copy the URL into a second tab (or send it to a friend on another device)
+3. Type in both — watch edits merge live with named, colored cursors
+4. Hit **Run** — the code executes in an isolated Docker container on the server, and *everyone* in the room sees the output and who ran it
+
+> Try to break it: `while True: pass`, a fork bomb, `os.system("rm -rf /")` — the sandbox shrugs it all off.
 
 ---
 
-## Architecture
+## ✨ Features
+
+- 🔄 **Real-time collaborative editing** — powered by [Yjs](https://yjs.dev) CRDTs, so concurrent edits *never* conflict, even on flaky networks
+- 👥 **Live presence** — every user gets an editable name + color, shown as labeled cursors right in the editor
+- 🏃 **One-click code execution** — Python, JavaScript, C++, C, Java, and Ruby (Go supported by the backend, awaiting a bigger VM)
+- 🔒 **Hardened Docker sandbox** — every run gets a throwaway container: no network, 128 MB RAM, 0.5 CPU, 10-second kill switch
+- 📡 **Shared run state** — execution status and output sync through the same CRDT doc, so late joiners see the room's last result too
+- 🎨 **Polished UI** — Monaco editor (the engine inside VS Code), glassmorphism design, light/dark themes, ⌘J command palette
+- 🪶 **Zero friction** — no accounts, no database; rooms live in memory and expire after 2 hours idle
+
+<!-- Screenshot: docs/screenshot.png — add a capture of two cursors in one room
+![PairPad — two users editing together](docs/screenshot.png)
+-->
+
+---
+
+## 🏗️ How it works
 
 ```
 ┌─────────────┐   Yjs sync (WebSocket, binary updates)   ┌──────────────────┐
@@ -32,143 +66,86 @@ Two people on two laptops can edit the same file simultaneously; their edits mer
                                                           │ Docker container │
                                                           │ (per execution)  │
                                                           └──────────────────┘
-                                                              (Oracle Cloud)
+                                                             (Oracle Cloud)
 ```
 
-### What is a CRDT, and why it beats Socket.IO broadcasting
+### Why CRDTs instead of just broadcasting keystrokes?
 
-A **CRDT (Conflict-free Replicated Data Type)** is a data structure that can be edited independently on many replicas and always converges to the same state — without a central server resolving conflicts. **Yjs** is a high-performance CRDT for JavaScript; it represents the document as a set of operations that can be applied in any order and still produce an identical result.
+Most collaborative editors broadcast edits over Socket.IO — effectively *last write wins*. PairPad uses **CRDTs (Conflict-free Replicated Data Types)**: a data structure whose operations can arrive in any order on any client and still converge to the identical document. That buys real guarantees:
 
-Most collaborative editors (e.g. the popular [Code-Sync](https://github.com/sahilatahar/Code-Sync)) instead **broadcast edits with Socket.IO** — effectively "last write wins." That approach has real problems PairPad avoids:
-
-| Aspect | Socket.IO broadcasting | Yjs CRDTs (PairPad) |
+| | Socket.IO broadcasting | Yjs CRDTs (PairPad) |
 |---|---|---|
-| **Conflict resolution** | None — concurrent edits can be lost | Automatic — all edits merge deterministically |
-| **Network tolerance** | Needs a constant connection | Works offline; syncs on reconnect |
-| **Server complexity** | Server must understand & transform document state | Server is a **dumb relay** — forwards binary updates |
-| **Latency** | Every keystroke round-trips the server | Edits apply locally first (instant), then sync |
-| **Scalability** | Server is the conflict-resolution bottleneck | Peer-capable; the relay is optional |
+| Concurrent edits | Can be lost or garbled | Merge deterministically, always |
+| Bad network | Needs a constant connection | Works offline, syncs on reconnect |
+| Latency | Every keystroke round-trips the server | Edits apply locally *instantly* |
+| Server's job | Must understand & transform the document | Dumb relay of binary updates |
 
-`y-websocket` is the sync layer: on the server, `setupWSConnection()` relays binary Yjs updates between clients; on the client, `WebsocketProvider` syncs the `Y.Doc` and provides the **Awareness** protocol for ephemeral state like cursor positions, names, and colors.
+### The security model — running strangers' code safely
 
-### Docker security model
+User code is hostile by assumption. Every execution runs in a fresh container with defense in depth:
 
-User code is untrusted, so every execution runs in a throwaway container with defense in depth:
-
-| Control | Setting | What it prevents |
+| Control | Setting | Stops |
 |---|---|---|
-| **Network** | `NetworkMode: 'none'` | No internet/network access — no exfiltration, no callbacks |
-| **Memory** | 128 MB (256 MB for Java/Go), swap disabled | OOM-killed instead of starving the host |
-| **CPU** | `CpuShares: 512` (~0.5 CPU) | Can't monopolize the host CPU |
-| **Time** | 10s hard `SIGKILL` | Infinite loops are terminated |
-| **Processes** | `PidsLimit: 128` | Mitigates fork bombs |
-| **Lifecycle** | `AutoRemove: true` | Container is destroyed after it exits |
-| **Input** | code base64-decoded to a file inside the container | No shell-injection ambiguity on the host |
+| 🌐 Network | `NetworkMode: 'none'` | Data exfiltration, crypto-miners, callbacks |
+| 🧠 Memory | 128 MB (256 MB for Java), swap off | Host memory starvation → clean OOM kill |
+| ⚙️ CPU | ~0.5 CPU shares | Monopolizing the host |
+| ⏱️ Time | Hard `SIGKILL` at 10 s | Infinite loops |
+| 🍴 Processes | `PidsLimit: 128` | Fork bombs |
+| 🗑️ Lifecycle | `AutoRemove: true` | Anything surviving its run |
+| 💉 Input | Code base64-decoded *inside* the container | Shell injection on the host |
 
-A program that runs `rm -rf /` or `os.system(...)` only affects its own ephemeral container — **the server process is never touched.** Output is also capped at 1 MB per stream so a `while True: print(...)` loop can't exhaust server memory.
-
-> The container is the security boundary. Code passes through the API as plain text, gets base64-encoded, and is decoded to a source file *inside* the sandbox — so shell metacharacters in user code are meaningless on the host.
+`rm -rf /` succeeds — inside a container that's deleted milliseconds later. The host never notices. Output is capped at 1 MB per stream so `while True: print()` can't flood the server either.
 
 ---
 
-## Project structure
+## 🛠️ Tech stack
 
-```
-pairpad/
-├── apps/
-│   ├── web/                 Vite + React + TypeScript frontend (→ Vercel)
-│   │   └── src/
-│   │       ├── pages/       Home, Room
-│   │       ├── components/  Editor, Output, Presence, Toolbar, NameEditor, ui/
-│   │       └── lib/         yjsClient, languages, theme
-│   └── server/              Node + TypeScript backend (→ Oracle Cloud)
-│       └── src/
-│           ├── index.ts     Express + WebSocket entry point
-│           ├── yjsRelay.ts  y-websocket relay (CRDT sync)
-│           ├── executor.ts  Docker execution via dockerode
-│           └── rooms.ts     In-memory room registry + 2h expiry
-└── README.md
-```
+| Layer | Tech |
+|---|---|
+| Frontend | React 18 · TypeScript · Vite · Tailwind CSS · Monaco Editor · `motion` |
+| Real-time sync | Yjs · y-websocket · y-monaco (CRDT + awareness/presence) |
+| Backend | Node 20 · Express · `ws` · dockerode |
+| Sandbox | Docker (per-execution containers, resource-capped) |
+| Hosting ($0/mo) | Vercel (web) · Oracle Cloud Always Free ARM VM + Caddy auto-HTTPS + PM2 (api) |
 
 ---
 
-## Local development
+## 🚀 Run it locally
 
-**Prerequisites:** Node.js 20+. Docker is only needed on the machine that runs the **backend**, and only to actually execute code — collaboration works without it.
+**Prereqs:** Node 20+. Docker only if you want the Run button (collaboration works without it).
 
 ```bash
+git clone https://github.com/ProDeveloperAditya/PairPad.git
+cd PairPad
 npm install
 
-# Terminal 1 — backend (http + ws on :4000)
-npm run dev:server
-
-# Terminal 2 — frontend (Vite on :5173)
-npm run dev:web
+npm run dev:server   # terminal 1 — backend on :4000
+npm run dev:web      # terminal 2 — frontend on :5173
 ```
 
-Open http://localhost:5173, click **New Room**, then open the room URL in a second tab to see live sync. Copy `.env.example` to `.env` in each app if you need to override URLs.
+Open <http://localhost:5173>, create a room, then open the same room URL in a second tab — that's the whole demo.
 
-> **No Docker locally?** Everything works except the Run button, which will report *"Execution service unavailable (Docker not reachable)."* Install Docker Desktop to run code locally, or rely on the deployed backend.
-
-### Language note
-
-For **Java**, the public class must be named `Main` (the file is written as `Main.java`). Other languages have no naming constraints.
+> **Note:** for Java, name the public class `Main`. Environment overrides live in each app's `.env.example`.
 
 ---
 
-## Deployment ($0 / month)
+## 📁 Project structure
 
-### Frontend → Vercel (free)
-
-1. Import the repo in Vercel and set **Root Directory** to `apps/web`.
-2. Add Environment Variables pointing at your backend:
-   - `VITE_WS_URL` = `wss://<backend-host>:4000`
-   - `VITE_API_URL` = `https://<backend-host>:4000`
-3. Deploy. SPA routing is handled by `apps/web/vercel.json`.
-
-### Backend → Oracle Cloud Always Free ARM VM (free)
-
-Oracle's Always Free tier gives a 4-core / 24 GB ARM VM at $0 forever (card for verification only). On the VM:
-
-```bash
-# Install Node 20 + Docker
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-sudo apt-get install -y nodejs docker.io
-sudo usermod -aG docker $USER   # re-login after this
-
-# Clone & build
-git clone <your-repo-url> pairpad && cd pairpad
-npm install
-npm run build:server
-
-# Run with PM2, set the CORS origin to your Vercel URL
-sudo npm i -g pm2
-FRONTEND_URL=https://<your-app>.vercel.app PORT=4000 \
-  pm2 start "npm run start --workspace=apps/server" --name pairpad
-pm2 save && pm2 startup
+```
+apps/
+├── web/        Vite + React frontend            → Vercel
+│   └── src/    pages/ · components/ · lib/ (yjsClient, languages, theme)
+└── server/     Node + TypeScript backend        → Oracle Cloud
+    └── src/    index.ts (Express + WS) · yjsRelay.ts (CRDT relay)
+                executor.ts (Docker runs) · rooms.ts (2h expiry)
 ```
 
-Open port 4000 in the VM's security list / firewall. The execution images are pulled automatically on first boot. (Alternatively, containerize the server with `apps/server/Dockerfile` — mount `/var/run/docker.sock` so it can spawn sibling containers.)
-
-### Will this cost money?
-
-No, within the free tiers. Adding languages only uses more of a **fixed** free allocation (disk/RAM on the Oracle VM), which isn't metered. The only ways the $0 breaks: exceeding Vercel's bandwidth (unlikely for this), or Oracle reclaiming an **idle** Always Free VM — avoided by keeping the server running.
-
 ---
 
-## Environment variables
+<div align="center">
 
-| App | Variable | Default | Purpose |
-|---|---|---|---|
-| server | `PORT` | `4000` | HTTP + WebSocket port |
-| server | `FRONTEND_URL` | `http://localhost:5173` | Allowed CORS origin |
-| web | `VITE_WS_URL` | `ws://localhost:4000` | Backend WebSocket URL |
-| web | `VITE_API_URL` | `http://localhost:4000` | Backend HTTP URL |
+Built by **[Aditya Raj](https://github.com/ProDeveloperAditya)** · [LinkedIn](https://www.linkedin.com/in/aditya-raj-developer/)
 
----
+If PairPad made you smile, a ⭐ makes me smile back.
 
-## Tech stack
-
-**Frontend:** Vite, React 18, TypeScript, Tailwind CSS v3, `@monaco-editor/react`, `yjs`, `y-websocket`, `y-monaco`, `motion`, `lucide-react`, `react-router-dom`
-
-**Backend:** Node 20, TypeScript (`tsx`), `ws`, `y-websocket`, `dockerode`, `express`, `cors`
+</div>
