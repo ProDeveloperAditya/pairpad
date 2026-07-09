@@ -45,9 +45,9 @@ No login, no setup, no database.
 - 🎨 **Polished UI** — Monaco editor (the engine inside VS Code), glassmorphism design, light/dark themes, ⌘J command palette
 - 🪶 **Zero friction** — no accounts, no database; rooms live in memory and expire after 2 hours idle
 
-<!-- Screenshot: docs/screenshot.png — add a capture of two cursors in one room
-![PairPad — two users editing together](docs/screenshot.png)
--->
+<br/>
+
+![PairPad — three users in one room: live named cursors in the Monaco editor, shared output showing who ran the code](docs/screenshot.png)
 
 ---
 
